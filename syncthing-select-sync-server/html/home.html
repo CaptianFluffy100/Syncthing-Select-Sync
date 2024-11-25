@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syncthing Select Sync Server</title>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+    
+        body {
+            background-color: #121212; /* Dark background */
+            color: #e0e0e0; /* Light text */
+            font-family: Arial, sans-serif;
+        }
+    
+        /* Navbar Styles */
+        .navbar {
+            background-color: #313131; /* Dark navbar background */
+            color: #e0e0e0;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+    
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+    
+        .navbar .logo a {
+            color: #90caf9; /* Syncthing Light Blue */
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
+        }
+    
+        .navbar .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 1rem;
+        }
+    
+        .navbar .nav-links li a {
+            color: #90caf9; /* Syncthing Light Blue */
+            text-decoration: none;
+            font-size: 1rem;
+            transition: color 0.3s;
+        }
+    
+        .navbar .nav-links li a:hover {
+            color: #42a5f5; /* Brighter Syncthing Blue */
+        }
+    
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            background: #1e1e1e; /* Dark section background */
+            padding: 5rem 1rem;
+            color: #e0e0e0;
+        }
+    
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #90caf9; /* Syncthing Light Blue */
+        }
+    
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #b0bec5; /* Neutral Light Text */
+        }
+    
+        .hero .btn {
+            background-color: #2196f3; /* Syncthing Button Blue */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            text-decoration: none;
+            font-size: 1rem;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+    
+        .hero .btn:hover {
+            background-color: #1e88e5; /* Darker Blue */
+        }
+    
+        /* Folder Section */
+        .folder-section {
+            padding: 2rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+    
+        .folder-section h2 {
+            font-size: 2rem;
+            color: #90caf9;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+    
+        .folder-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+    
+        .folder-item {
+            background-color: #1e1e1e; /* Dark card background */
+            border: 1px solid #424242; /* Border for folder item */
+            border-radius: 8px;
+            padding: 1rem;
+            width: 220px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+    
+        .folder-item:hover {
+            background-color: #333;
+            transform: scale(1.05);
+        }
+    
+        .folder-item .folder-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #90caf9;
+            margin-bottom: 0.5rem;
+        }
+    
+        .folder-item .folder-detail {
+            font-size: 0.9rem;
+            color: #b0bec5;
+            margin-bottom: 0.3rem;
+        }
+
+        /* Users Section */
+        .users-table-wrapper {
+            overflow-x: auto; /* Ensure responsiveness */
+            margin-top: 1rem;
+            border: 1px solid #424242; /* Matches dark theme */
+            border-radius: 8px;
+            padding: 1rem;
+            background-color: #1e1e1e; /* Dark background for the table */
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            color: #e0e0e0;
+        }
+
+        .users-table th, .users-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #424242; /* Subtle row separators */
+        }
+
+        .users-table th {
+            background-color: #313131; /* Distinct header background */
+            font-weight: bold;
+            color: #90caf9; /* Light Blue for Syncthing vibe */
+            text-transform: uppercase;
+        }
+
+        .users-table tr:hover {
+            background-color: #424242; /* Subtle hover effect */
+            cursor: pointer;
+        }
+
+        .users-table td {
+            color: #bdbdbd; /* Slightly lighter text for contrast */
+        }
+
+        .users-table tr:last-child td {
+            border-bottom: none; /* Remove border for the last row */
+        }
+
+        .users-table td:first-child {
+            font-weight: bold; /* Highlight usernames */
+        }
+
+        /* Popup Styles */
+        .popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .popup.hidden {
+            display: none;
+        }
+
+        .popup-content {
+            background-color: #1e1e1e;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 300px;
+            color: #e0e0e0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .close-popup {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #ff4c4c;
+        }
+
+        .popup-fields {
+            margin-top: 1rem;
+        }
+
+        .popup-field {
+            margin-bottom: 1rem;
+        }
+
+        .popup-field label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #90caf9;
+        }
+
+        .popup-field input, .popup-field textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background-color: #2b2b2b;
+            border: 1px solid #424242;
+            color: #e0e0e0;
+        }
+
+        .popup-field input:focus, .popup-field textarea:focus {
+            border-color: #90caf9;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #42a5f5;
+            color: #000;
+        }
+
+        .delete-button {
+            background-color: #ff4c4c;
+            margin-top: 1rem;
+        }
+
+        .delete-button:hover {
+            background-color: #ff8585;
+        }
+
+        .add-user-btn {
+            width: 100%;
+            height: 2.5rem;
+            border: none;
+            border-radius: 1rem;
+            background-color: #2196f3; /* Syncthing Button Blue */
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .add-user-btn:hover {
+            background-color: #1e88e5;
+            transform: translateY(-2px);
+            color: white;
+        }
+    
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar .nav-links {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <a href="#">Syncthing Select Sync Server</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#ss" onclick="openEditSSPopup()">Site Settings</a></li>
+                <li><a href="#folders">Folders</a></li>
+                <li><a href="#users">Users</a></li>
+                <li><a href="#logout" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+    <section id="folders" class="folder-section">
+        <h2>Accessible Folders</h2>
+        <div class="folder-list">
+            <!-- Example folder items -->
+            <Folders/>
+        </div>
+    </section>
+
+    <section id="users" class="folder-section">
+        <h2>Users</h2>
+        <button id="open-add-user-popup" class="add-user-btn" onclick="openAddUserPopup()">Add New User</button>
+        <div class="users-table-wrapper">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Password</th>
+                        <th>Role</th>
+                        <th>Folder Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Example user rows -->
+                    <Users/>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Add User Popup -->
+    <div id="add-user-popup" class="popup hidden">
+        <div class="popup-content">
+            <span class="close-popup" onclick="closeAddUserPopup()">×</span>
+            <h3>Add New User</h3>
+            <div class="popup-fields">
+                <div class="popup-field">
+                    <label>Username:</label>
+                    <input id="new-username" type="text" class="popup-input" placeholder="Enter username" />
+                </div>
+
+                <div class="popup-field">
+                    <label>Password:</label>
+                    <input id="new-password" type="password" class="popup-input" placeholder="Enter password" />
+                </div>
+
+                <div class="popup-field">
+                    <label for="new-role">Role:</label>
+                    <input id="new-role" type="number" min="0" max="255" placeholder="0" />
+                </div>
+
+                <div class="popup-field">
+                    <label>Folders:</label>
+                    <input id="new-array" type="text" class="popup-input" placeholder="e.g., [{'folder':'FOLDER_ID'}]" />
+                </div>
+            </div>
+            <button id="save-user" onclick="addUser()">Submit</button>
+            <button id="delete-user" class="delete-button" onclick="closeAddUserPopup()">Cancel</button>
+        </div>
+    </div>
+    <!-- Edit User Popup -->
+    <div id="user-popup" class="popup hidden">
+        <div class="popup-content">
+            <span class="close-popup" onclick="closePopup()">×</span>
+            <h3>Edit User</h3>
+            <div class="popup-fields">
+                <div class="popup-field">
+                    <label for="edit-username">Username:</label>
+                    <input id="edit-username" type="text" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-password">Password:</label>
+                    <input id="edit-password" type="password" placeholder="********" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-role">Role:</label>
+                    <input id="edit-role" type="text" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-array">Array of Folders:</label>
+                    <textarea id="edit-array" rows="3"></textarea>
+                </div>
+            </div>
+            <button id="save-user" onclick="saveUser()">Save Changes</button>
+            <button id="delete-user" class="delete-button" onclick="deleteUser()">Delete User</button>
+        </div>
+    </div>
+    <!-- Edit Site Settings Popup -->
+    <div id="site-settings-popup" class="popup hidden">
+        <div class="popup-content">
+            <span class="close-popup" onclick="closeEditSSPopup()">×</span>
+            <h3>Edit Site Settings</h3>
+            <div class="popup-fields">
+                <div class="popup-field">
+                    <label for="edit-api-token">Syncthing API Token:</label>
+                    <input id="edit-api-token" type="text" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-st-url">Syncthing URL:</label>
+                    <input id="edit-st-url" type="text" placeholder="(exp: 127.0.0.1:8384)" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-ssss-url">SSSS URL:</label>
+                    <input id="edit-ssss-url" type="text" placeholder="(exp: 0.0.0.0:8383)" />
+                </div>
+            </div>
+            <button id="save-user" onclick="saveSiteSettings()">Save Site Settings</button>
+        </div>
+    </div>
+    
+
+    <script>
+        function logout() {
+            let url = window.location.origin + "/api/logout";
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+                .then((response) => {
+                    window.location.href = "/login";
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                });
+        }
+
+        function openPopup(userId) {
+            // Example of fetching user data based on ID
+            console.log("Fetching data for user ID:", userId);
+            // Simulated user data; replace this with an actual fetch call
+            const userData = <UsersData/>;
+            let user = null;
+            for (let i = 0; i < userData.length; i++) {
+                let id = "user-"+userData[i].id;
+                if (id == userId) {
+                    user = userData[i];
+                    break;
+                }
+            }
+
+            if (!user) {
+                console.error("User data not found for ID:", userId);
+                return;
+            }
+        
+            // Populate the popup with user data
+            document.getElementById("edit-username").value = user.username;
+            document.getElementById("edit-password").value = user.password;
+            document.getElementById("edit-role").value = user.role;
+            document.getElementById("edit-array").value = JSON.stringify(user.allowed_folders);
+        
+            document.getElementById("user-popup").classList.remove("hidden");
+        }
+        
+        function closePopup() {
+            document.getElementById("user-popup").classList.add("hidden");
+        }
+        
+        function saveUser() {
+            // Get updated values from the inputs
+            const updatedUser = {
+                id: 0,
+                username: document.getElementById("edit-username").value,
+                password: document.getElementById("edit-password").value, // Normally, hashed on the backend
+                salt: "",
+                role: Number(document.getElementById("edit-role").value),
+                allowed_folders: document.getElementById("edit-array").value
+            };
+        
+            console.log("Updated User:", updatedUser);
+            // Send the updated data to your server or update your local data
+            let url = window.location.origin + "/api/update-user";
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updatedUser),
+            })
+            .then((response) => {
+                
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+
+            closePopup();
+        }
+        
+        function deleteUser() {
+            const updatedUser = {
+                username: document.getElementById("edit-username").value,
+            };
+            console.log("Deleting user:", updatedUser);
+            // Send a delete request to your server or update your local data
+            let url = window.location.origin + "/api/delete-user";
+            fetch(url, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updatedUser),
+            })
+            .then((response) => {
+                
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+
+            closePopup();
+        }
+
+        function attachRowClickEvents() {
+            document.querySelectorAll(".users-table tbody tr").forEach(row => {
+                row.addEventListener("click", () => {
+                    const userId = row.getAttribute("data-id");
+                    if (userId) {
+                        openPopup(userId);
+                    } else {
+                        console.error("No user ID found for this row.");
+                    }
+                });
+            });
+        }
+        // Call this function once the page loads
+        attachRowClickEvents();
+
+        // Open the Add User Popup
+        function openAddUserPopup() {
+            document.getElementById("add-user-popup").classList.remove("hidden");
+        }
+
+        // Close the Add User Popup
+        function closeAddUserPopup() {
+            document.getElementById("add-user-popup").classList.add("hidden");
+        }
+
+        // Add New User Functionality
+        function addUser() {
+            const username = document.getElementById("new-username").value;
+            const password = document.getElementById("new-password").value;
+            const role = Number(document.getElementById("new-role").value);
+            const allowed_folders = document.getElementById("new-array").value;
+        
+            if (!username || !password || !role) {
+                alert("Please fill out all fields.");
+                return;
+            }
+        
+            const newUser = {
+                id: 0,
+                salt: "",
+                username,
+                password,
+                role,
+                allowed_folders,
+            };
+        
+            // Send the new user data to the server
+            fetch("/api/add-user", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(newUser),
+            })
+                .then(response => {
+                    if (response.ok) {
+                        alert("User added successfully!");
+                        location.reload(); // Reload the page to update the user table
+                    } else {
+                        alert("Failed to add user. Please try again.");
+                    }
+                })
+                .catch(error => console.error("Error adding user:", error));
+        }
+
+        // Site Settings Code
+        // Open the Add User Popup
+        function openEditSSPopup() {
+            document.getElementById("site-settings-popup").classList.remove("hidden");
+        }
+
+        // Close the Add User Popup
+        function closeEditSSPopup() {
+            document.getElementById("site-settings-popup").classList.add("hidden");
+        }
+
+        function saveSiteSettings() {
+            // Get updated values from the inputs
+            const updateSS = {
+                api_token: document.getElementById("edit-api-token").value,
+                st_url: document.getElementById("edit-st-url").value, // Normally, hashed on the backend
+                ssss_url: document.getElementById("edit-ssss-url").value,
+            };
+        
+            console.log("Updated Site Settings:", updateSS);
+            // Send the updated data to your server or update your local data
+            let url = window.location.origin + "/api/update-site-settings";
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updateSS),
+            })
+            .then((response) => {
+                closeEditSSPopup();
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+
+            closePopup();
+        }
+    </script>
+</body>
+</html>

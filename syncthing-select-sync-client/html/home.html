@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syncthing Select Sync Client</title>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+    
+        body {
+            background-color: #121212; /* Dark background */
+            color: #e0e0e0; /* Light text */
+            font-family: Arial, sans-serif;
+        }
+    
+        /* Navbar Styles */
+        .navbar {
+            background-color: #313131; /* Dark navbar background */
+            color: #e0e0e0;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+    
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+    
+        .navbar .logo a {
+            color: #90caf9; /* Syncthing Light Blue */
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
+        }
+    
+        .navbar .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 1rem;
+        }
+    
+        .navbar .nav-links li a {
+            color: #90caf9; /* Syncthing Light Blue */
+            text-decoration: none;
+            font-size: 1rem;
+            transition: color 0.3s;
+        }
+    
+        .navbar .nav-links li a:hover {
+            color: #42a5f5; /* Brighter Syncthing Blue */
+        }
+    
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            background: #1e1e1e; /* Dark section background */
+            padding: 5rem 1rem;
+            color: #e0e0e0;
+        }
+    
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #90caf9; /* Syncthing Light Blue */
+        }
+    
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #b0bec5; /* Neutral Light Text */
+        }
+    
+        .hero .btn {
+            background-color: #2196f3; /* Syncthing Button Blue */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            text-decoration: none;
+            font-size: 1rem;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+    
+        .hero .btn:hover {
+            background-color: #1e88e5; /* Darker Blue */
+        }
+    
+        /* Folder Section */
+        .folder-section {
+            padding: 2rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+    
+        .folder-section h2 {
+            font-size: 2rem;
+            color: #90caf9;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+    
+        .folder-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+    
+        .folder-item {
+            background-color: #1e1e1e; /* Dark card background */
+            border: 1px solid #424242; /* Border for folder item */
+            border-radius: 8px;
+            padding: 1rem;
+            width: 220px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+    
+        .folder-item:hover {
+            background-color: #333;
+            transform: scale(1.05);
+        }
+    
+        .folder-item .folder-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #90caf9;
+            margin-bottom: 0.5rem;
+        }
+    
+        .folder-item .folder-detail {
+            font-size: 0.9rem;
+            color: #b0bec5;
+            margin-bottom: 0.3rem;
+        }
+
+        /* Users Section */
+        .users-table-wrapper {
+            overflow-x: auto; /* Ensure responsiveness */
+            margin-top: 1rem;
+            border: 1px solid #424242; /* Matches dark theme */
+            border-radius: 8px;
+            padding: 1rem;
+            background-color: #1e1e1e; /* Dark background for the table */
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            color: #e0e0e0;
+        }
+
+        .users-table th, .users-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #424242; /* Subtle row separators */
+        }
+
+        .users-table th {
+            background-color: #313131; /* Distinct header background */
+            font-weight: bold;
+            color: #90caf9; /* Light Blue for Syncthing vibe */
+            text-transform: uppercase;
+        }
+
+        .users-table tr:hover {
+            background-color: #424242; /* Subtle hover effect */
+            cursor: pointer;
+        }
+
+        .users-table td {
+            color: #bdbdbd; /* Slightly lighter text for contrast */
+        }
+
+        .users-table tr:last-child td {
+            border-bottom: none; /* Remove border for the last row */
+        }
+
+        .users-table td:first-child {
+            font-weight: bold; /* Highlight usernames */
+        }
+
+        /* Popup Styles */
+        .popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .popup.hidden {
+            display: none;
+        }
+
+        .popup-content {
+            background-color: #1e1e1e;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 300px;
+            color: #e0e0e0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .close-popup {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #ff4c4c;
+        }
+
+        .popup-fields {
+            margin-top: 1rem;
+        }
+
+        .popup-field {
+            margin-bottom: 1rem;
+        }
+
+        .popup-field label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #90caf9;
+        }
+
+        .popup-field input, .popup-field textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background-color: #2b2b2b;
+            border: 1px solid #424242;
+            color: #e0e0e0;
+        }
+
+        .popup-field input:focus, .popup-field textarea:focus {
+            border-color: #90caf9;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #42a5f5;
+            color: #000;
+        }
+
+        .delete-button {
+            background-color: #ff4c4c;
+            margin-top: 1rem;
+        }
+
+        .delete-button:hover {
+            background-color: #ff8585;
+        }
+
+        .add-user-btn {
+            width: 100%;
+            height: 2.5rem;
+            border: none;
+            border-radius: 1rem;
+            background-color: #2196f3; /* Syncthing Button Blue */
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .add-user-btn:hover {
+            background-color: #1e88e5;
+            transform: translateY(-2px);
+            color: white;
+        }
+    
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar .nav-links {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <a href="#">Syncthing Select Sync Client</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#ss" onclick="openEditSSPopup()">Site Settings</a></li>
+                <li><a href="#" onclick="login()" id="login-status"><LogInStatus/></a></li>
+            </ul>
+        </div>
+    </nav>
+    <section id="folders" class="folder-section">
+        <h2>Accessible Folders</h2>
+        <div class="folder-list">
+            <!-- Example folder items -->
+            <Folders/>
+        </div>
+    </section>
+
+    <!-- Edit Site Settings Popup -->
+    <div id="site-settings-popup" class="popup hidden">
+        <div class="popup-content">
+            <span class="close-popup" onclick="closeEditSSPopup()">×</span>
+            <h3>Edit Site Settings</h3>
+            <div class="popup-fields">
+                <div class="popup-field">
+                    <label for="edit-api-token">Syncthing API Token:</label>
+                    <input id="edit-api-token" type="text" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-ssss-url">SSSS URL:</label>
+                    <input id="edit-ssss-url" type="text" placeholder="(exp: 10.0.0.2:8383)" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-ssss-user">SSSS User:</label>
+                    <input id="edit-ssss-user" type="text" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-ssss-pass">SSSS Pass:</label>
+                    <input id="edit-ssss-pass" type="text" />
+                </div>
+                <div class="popup-field">
+                    <label for="edit-st-url">Syncthing URL:</label>
+                    <input id="edit-st-url" type="text" />
+                </div>
+            </div>
+            <button id="save-user" onclick="saveSiteSettings()">Save Site Settings</button>
+        </div>
+    </div>
+
+    <script>
+        function login() {
+            let url = "/login";
+            fetch(url, {
+                method: "GET",
+            })
+                .then((response) => {
+                    // Check respones
+                    console.log(response);
+                    let doc = document.getElementById("login-status");
+                    if (response.status == 200) {
+                        doc.innerText = "Logged In";
+                    } else if (response.status == 418) {
+                        doc.innerText = "Not Logged In";
+                    } else {
+                        doc.innerText = "Server Error";
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                });
+        }
+
+        // Site Settings Code
+        // Open the Add User Popup
+        function openEditSSPopup() {
+            document.getElementById("site-settings-popup").classList.remove("hidden");
+        }
+
+        // Close the Add User Popup
+        function closeEditSSPopup() {
+            document.getElementById("site-settings-popup").classList.add("hidden");
+        }
+
+        function saveSiteSettings() {
+            // Get updated values from the inputs
+            const updateSS = {
+                api_token: document.getElementById("edit-api-token").value,
+                ssss_url: document.getElementById("edit-ssss-url").value,
+                ssss_user: document.getElementById("edit-ssss-user").value,
+                ssss_pass: document.getElementById("edit-ssss-pass").value,
+                st_url: document.getElementById("edit-st-url").value,
+            };
+        
+            console.log("Updated Site Settings:", updateSS);
+            // Send the updated data to your server or update your local data
+            let url = window.location.origin + "/update-site-settings";
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updateSS),
+            })
+            .then((response) => {
+                closeEditSSPopup();
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+
+            closePopup();
+        }
+    </script>
+</body>
+</html>

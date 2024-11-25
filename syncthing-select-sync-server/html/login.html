@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login to SSSS</title>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #121212; /* Match dark background */
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .center-div {
+            max-width: 22rem;
+            background-color: #1e1e1e; /* Card-like dark background */
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .center-div h1 {
+            color: #90caf9; /* Syncthing Light Blue */
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .center-div p {
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            color: #b0bec5; /* Subtle neutral color */
+        }
+
+        .center-div input {
+            width: 100%;
+            height: 2.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            background-color: #333;
+            color: #e0e0e0;
+        }
+
+        .center-div input::placeholder {
+            color: #b0bec5;
+        }
+
+        .center-div input:focus {
+            outline: none;
+            border: 2px solid #90caf9;
+        }
+
+        .center-div button {
+            width: 100%;
+            height: 2.5rem;
+            border: none;
+            border-radius: 1rem;
+            background-color: #2196f3; /* Syncthing Button Blue */
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .center-div button:hover {
+            background-color: #1e88e5; /* Darker Blue */
+            transform: translateY(-2px);
+        }
+
+        .error-msg {
+            color: #ff7c7c; /* Error message color */
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .center-div {
+                padding: 1.5rem;
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="center-div">
+        <h1>Login</h1>
+        <p id="error-msg" class="error-msg"></p>
+        <input id="user" placeholder="Username" required />
+        <input id="pass" placeholder="Password" type="password" required />
+        <button onclick="login()">Login</button>
+    </div>
+
+    <script>
+        function login() {
+            let url = window.location.origin + "/api/login";
+            console.log("URL:", url);
+            let user = document.getElementById("user").value;
+            let pass = document.getElementById("pass").value;
+            let data = {
+                username: user,
+                password: pass
+            };
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            })
+                .then((response) => {
+                    switch (response.status) {
+                        case 200:
+                            console.log("Login successful!");
+                            window.location.href = "/";
+                            break;
+                        case 418:
+                            document.getElementById("error-msg").innerText = "Username or password is incorrect.";
+                            break;
+                        case 503:
+                            document.getElementById("error-msg").innerText = "The service is unavailable.";
+                            break;
+                        default:
+                            document.getElementById("error-msg").innerText = "Unknown error!";
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                });
+        }
+    </script>
+</body>
+</html>

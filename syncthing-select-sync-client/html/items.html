@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder and File Explorer</title>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+    
+        body {
+            background-color: #121212; /* Dark background */
+            color: #e0e0e0; /* Light text */
+            font-family: Arial, sans-serif;
+        }
+    
+        /* Navbar Styles */
+        .navbar {
+            background-color: #313131; /* Dark navbar background */
+            color: #e0e0e0;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+    
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+    
+        .navbar .logo a {
+            color: #90caf9; /* Syncthing Light Blue */
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
+        }
+    
+        .navbar .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 1rem;
+        }
+    
+        .navbar .nav-links li a {
+            color: #90caf9; /* Syncthing Light Blue */
+            text-decoration: none;
+            font-size: 1rem;
+            transition: color 0.3s;
+        }
+    
+        .navbar .nav-links li a:hover {
+            color: #42a5f5; /* Brighter Syncthing Blue */
+        }
+
+        /* Users Section */
+        .users-table-wrapper {
+            overflow-x: auto; /* Ensure responsiveness */
+            margin-top: 1rem;
+            border: 1px solid #424242; /* Matches dark theme */
+            border-radius: 8px;
+            padding: 1rem;
+            background-color: #1e1e1e; /* Dark background for the table */
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            color: #e0e0e0;
+        }
+
+        .users-table th, .users-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #424242; /* Subtle row separators */
+        }
+
+        .users-table th {
+            background-color: #313131; /* Distinct header background */
+            font-weight: bold;
+            color: #90caf9; /* Light Blue for Syncthing vibe */
+            text-transform: uppercase;
+        }
+
+        .users-table tr:hover {
+            background-color: #424242; /* Subtle hover effect */
+            cursor: pointer;
+        }
+
+        .users-table td {
+            color: #bdbdbd; /* Slightly lighter text for contrast */
+        }
+
+        .users-table tr:last-child td {
+            border-bottom: none; /* Remove border for the last row */
+        }
+
+        .users-table td:first-child {
+            font-weight: bold; /* Highlight usernames */
+        }
+
+        /* Folder Section */
+        .folder-section {
+            padding: 2rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+    
+        .folder-section h2 {
+            font-size: 2rem;
+            color: #90caf9;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+    
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar .nav-links {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <a href="#">Syncthing Select Sync Client</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+            </ul>
+        </div>
+    </nav>
+    <section id="users" class="folder-section">
+        <h2>Folder and File Explorer</h2>
+        <div class="users-table-wrapper">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Path</th>
+                        <th>Type</th>
+                        <th>Sync</th>
+                    </tr>
+                </thead>
+                <tbody id="folder-file-table">
+                    <!-- Rows populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <script>
+        // Sample data (to simulate `FolderFile` array)
+        const folderFileTable = document.getElementById('folder-file-table');
+        let select_synced_items = [];
+        
+        function updateTable(folderFileData) {
+            folderFileTable.innerHTML = "";
+
+            // Populate table
+            folderFileData.forEach(item => {
+                const row = document.createElement('tr');
+                row.dataset.path = item.path;
+                row.dataset.isFile = item.is_file;
+            
+                let synced_item = check_if_selected(item);
+            
+                // Create checkbox
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = synced_item.isSelected;
+                checkbox.addEventListener('change', () => handleCheckboxChange(item, checkbox.checked, synced_item.syncedId));
+            
+                // Populate row
+                row.innerHTML = `
+                    <td class="${item.is_file ? 'file' : 'folder'}">${item.id}</td>
+                    <td>${item.name}</td>
+                    <td>${item.path}</td>
+                    <td>${item.is_file ? 'File' : 'Folder'}</td>
+                `;
+            
+                // Add checkbox to its own cell
+                const checkboxCell = document.createElement('td');
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+            
+                // Add folder click event with target filtering
+                if (!item.is_file) {
+                    row.addEventListener('click', (event) => {
+                        if (event.target.tagName !== 'INPUT') { // Only trigger if the target is not the checkbox
+                            fetchFolderContents(item.id, item.path);
+                        }
+                    });
+                }
+            
+                folderFileTable.appendChild(row);
+            });
+        }
+
+
+
+        function handleCheckboxChange(item, isChecked, synced_id) {
+            console.log(`Item ID: ${item}, Checked: ${isChecked}`);
+
+            if (isChecked) {
+                // Add the item in the database
+                // pub struct FolderFile {
+                //     pub id: String,
+                //     pub name: String,
+                //     pub path: String,
+                //     pub is_file: bool,
+                // }
+                // Add the item to the database
+                console.log("Item:", item);
+                fetch('/add-selected-item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: item.id,
+                        name: item.name,
+                        path: item.path,
+                        is_file: item.is_file
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Database updated:', data);
+                    fetchSelectSyncItems();
+                })
+                .catch(error => {
+                    console.error('Error updating database:', error);
+                });
+            } else {
+                // Delete Item in database
+                fetch('/del-selected-item', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: synced_id,
+                        root: item.id
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Database updated:', data);
+                    fetchSelectSyncItems();
+                })
+                .catch(error => {
+                    console.error('Error updating database:', error);
+                });
+            }
+        }
+
+        function check_if_selected(item) {
+            for (let i = 0; i < select_synced_items.length; i++) {
+                if (select_synced_items[i].root == item.id && select_synced_items[i].path == item.path) {
+                    return { isSelected: true, syncedId: select_synced_items[i].id };
+                }
+            }
+
+            return { isSelected: false, syncedId: 0 };
+        }
+
+        // Fetch folder contents
+        function fetchFolderContents(folderId, folderPath) {
+            const folderSearch = {
+                id: folderId,
+                path: folderPath,
+            };
+            let url = window.location.origin + "/ssss/get-items";
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(folderSearch),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Folder contents:', data);
+                    // Replace folderFileData and re-render table if necessary
+                    updateTable(data);
+                })
+                .catch(error => console.error('Error fetching folder contents:', error));
+        }
+
+        // Fetch folder contents
+        function fetchSelectSyncItems() {
+            let url = window.location.origin + "/select-sync-items";
+            fetch(url, {
+                method: 'GET',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Folder contents:', data);
+                    // Replace folderFileData and re-render table if necessary
+                    select_synced_items = data;
+                })
+                .catch(error => console.error('Error fetching folder contents:', error));
+        }
+
+        fetchFolderContents("", "");
+        fetchSelectSyncItems();
+    </script>
+</body>
+</html>
