@@ -120,6 +120,26 @@
             text-align: center;
             margin-bottom: 1rem;
         }
+
+        .breadcrumb-item {
+            cursor: pointer;
+            color: #42a5f5;
+            text-decoration: underline;
+        }
+
+        .breadcrumb-item:hover {
+            color: #1e88e5;
+        }
+
+        .breadcrumb-current {
+            font-weight: bold;
+            color: #e0e0e0;
+        }
+
+        .breadcrumb-main-folder {
+            font-weight: bold;
+            color: #90caf9;
+        }
     
         /* Responsive Design */
         @media (max-width: 768px) {
@@ -141,8 +161,15 @@
             </ul>
         </div>
     </nav>
+
     <section id="users" class="folder-section">
         <h2>Folder and File Explorer</h2>
+
+        <!-- Breadcrumb Navigation -->
+        <div id="breadcrumb" class="breadcrumb">
+            <!-- Breadcrumb items will be dynamically added here -->
+        </div>
+
         <div class="users-table-wrapper">
             <table class="users-table">
                 <thead>
@@ -164,52 +191,117 @@
     <script>
         // Sample data (to simulate `FolderFile` array)
         const folderFileTable = document.getElementById('folder-file-table');
+        const breadcrumb = document.getElementById('breadcrumb');
+        let currentPath = ""; // Track the current folder path
         let select_synced_items = [];
+        let folder_file_data = []
+
+        function updateBreadcrumb() {
+            breadcrumb.innerHTML = ""; // Clear existing breadcrumb
+
+            const parts = currentPath.split("/").filter(part => part); // Split path into segments
+
+            // Always add "Root"
+            const root = document.createElement('span');
+            root.textContent = "Root";
+            root.classList.add('breadcrumb-item');
+            root.dataset.path = ""; // Set the data attribute for the root path
+            root.addEventListener('click', () => {
+                currentPath = ""; // Navigate to the root
+                fetchFolderContents("", ""); // Fetch root contents
+            });
+            breadcrumb.appendChild(root);
         
-        function updateTable(folderFileData) {
+            if (parts.length > 0) {
+                const separator = document.createElement('span');
+                separator.textContent = " > ";
+                breadcrumb.appendChild(separator);
+
+                // Always add "Main Folder ID"
+                const main_folder = document.createElement('span');
+                main_folder.textContent = folder_file_data[0].id;
+                main_folder.classList.add('breadcrumb-item');
+                main_folder.dataset.path = ""; // Set the data attribute for the root path
+                main_folder.addEventListener('click', () => {
+                    fetchFolderContents(folder_file_data[0].id, ""); // Fetch root contents
+                });
+                breadcrumb.appendChild(main_folder);
+
+                const sep = document.createElement('span');
+                sep.textContent = " > ";
+                breadcrumb.appendChild(sep);
+            }
+        
+            // Add parts to the breadcrumb
+            let cumulativePath = ""; // Start with an empty path
+            parts.forEach((part, index) => {
+                cumulativePath += (index === 0 ? part : `/${part}`); // Build path incrementally
+            
+                const breadcrumbItem = document.createElement('span');
+                breadcrumbItem.textContent = part;
+                breadcrumbItem.dataset.path = cumulativePath; // Store the path in a data attribute
+            
+                // Make all segments clickable except the last one
+                if (index < parts.length - 1) {
+                    breadcrumbItem.classList.add('breadcrumb-item');
+                    breadcrumbItem.addEventListener('click', () => {
+                        currentPath = breadcrumbItem.dataset.path; // Retrieve the path from the data attribute
+                        fetchFolderContents(folder_file_data[0].id, currentPath); // Fetch contents for this path
+                    });
+                } else {
+                    breadcrumbItem.classList.add('breadcrumb-current');
+                }
+            
+                breadcrumb.appendChild(breadcrumbItem);
+            
+                if (index < parts.length - 1) {
+                    const separator = document.createElement('span');
+                    separator.textContent = " > ";
+                    breadcrumb.appendChild(separator);
+                }
+            });
+        }
+        
+        function updateTable() {
             folderFileTable.innerHTML = "";
 
-            // Populate table
-            folderFileData.forEach(item => {
+            folder_file_data.forEach(item => {
                 const row = document.createElement('tr');
                 row.dataset.path = item.path;
                 row.dataset.isFile = item.is_file;
-            
+
                 let synced_item = check_if_selected(item);
-            
-                // Create checkbox
+
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.checked = synced_item.isSelected;
                 checkbox.addEventListener('change', () => handleCheckboxChange(item, checkbox.checked, synced_item.syncedId));
-            
-                // Populate row
+
                 row.innerHTML = `
                     <td class="${item.is_file ? 'file' : 'folder'}">${item.id}</td>
                     <td>${item.name}</td>
                     <td>${item.path}</td>
                     <td>${item.is_file ? 'File' : 'Folder'}</td>
                 `;
-            
-                // Add checkbox to its own cell
+
                 const checkboxCell = document.createElement('td');
                 checkboxCell.appendChild(checkbox);
                 row.appendChild(checkboxCell);
-            
-                // Add folder click event with target filtering
+
                 if (!item.is_file) {
                     row.addEventListener('click', (event) => {
                         if (event.target.tagName !== 'INPUT') { // Only trigger if the target is not the checkbox
+                            currentPath = item.path; // Update current path
                             fetchFolderContents(item.id, item.path);
                         }
                     });
                 }
-            
+
                 folderFileTable.appendChild(row);
             });
+
+            updateBreadcrumb(); // Update breadcrumb after updating the table
         }
-
-
 
         function handleCheckboxChange(item, isChecked, synced_id) {
             console.log(`Item ID: ${item}, Checked: ${isChecked}`);
@@ -279,10 +371,13 @@
 
         // Fetch folder contents
         function fetchFolderContents(folderId, folderPath) {
+
             const folderSearch = {
                 id: folderId,
                 path: folderPath,
             };
+
+            console.log("Folder Search:", folderSearch);
             let url = window.location.origin + "/ssss/get-items";
             fetch(url, {
                 method: 'POST',
@@ -293,7 +388,8 @@
                 .then(data => {
                     console.log('Folder contents:', data);
                     // Replace folderFileData and re-render table if necessary
-                    updateTable(data);
+                    folder_file_data = data;
+                    updateTable();
                 })
                 .catch(error => console.error('Error fetching folder contents:', error));
         }

@@ -264,7 +264,17 @@ async fn get_items_in_ssss_folder(client: Arc<Client>, fs: FolderSearch) -> Vec<
     match client.post(&format!("{}/api/ssss/get-items", ss.value)).json(&fs).send().await {
         Ok(response) => {
             // Get respones status
-            let res = response.json::<Vec<FolderFile>>().await.unwrap_or_default();
+            let mut res = response.json::<Vec<FolderFile>>().await.unwrap_or_default();
+            // Sort the result: folders first, files last
+            res.sort_by(|a, b| {
+                // If both are folders or both are files, sort by name
+                if a.is_file == b.is_file {
+                    a.name.cmp(&b.name)
+                } else {
+                    // Folders (is_file = false) come first, so compare `is_file`
+                    a.is_file.cmp(&b.is_file)
+                }
+            });
             return res;
         },
         Err(err) => out::error(SCRIPT, &format!("Request failed: {:?}", err)),

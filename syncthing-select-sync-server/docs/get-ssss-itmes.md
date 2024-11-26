@@ -24,11 +24,13 @@ The request payload must include the following fields:
 ```json
 [
     {
+        "id": "FOLDER_ID",
         "name": "example_file.txt",
         "path": "subfolder/example_file.txt",
         "is_file": true
     },
-    {
+    {   
+        "id": "FOLDER_ID",
         "name": "example_folder",
         "path": "subfolder/example_folder",
         "is_file": false
@@ -39,6 +41,7 @@ The request payload must include the following fields:
 #### Success
 **Status: OK**  
 Returns an array of items in the specified folder. Each item includes:
+- **id**: The id of the root folder.
 - **name**: The name of the item.  
 - **path**: The relative path of the item.  
 - **is_file**: A boolean indicating whether the item is a file or folder.
