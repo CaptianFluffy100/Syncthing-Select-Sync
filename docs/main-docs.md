@@ -30,6 +30,9 @@ Retrieve the list of folders accessible to the user.
 ### [Get Folder Items](get-ssss-items.md)  
 Learn how to retrieve folder items from the system.
 
+### [Update Site Settings](update-site-settings.md)  
+Learn how to update site settings.
+
 ---
 
 Use the links above to explore each endpoint in detail. If you have additional questions, feel free to reach out for support!
