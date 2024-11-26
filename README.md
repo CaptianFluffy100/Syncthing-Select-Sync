@@ -1,54 +1,94 @@
 # Syncthing-Select-Sync
-Select Sync for Syncthing.
 
-#### ***This project is still in development.***
+**Select Sync for Syncthing**
 
+#### **_This project is currently in development._**
 
-### Setup Client
+---
 
-After starting up the client you will need to change a few settings.  So first thing is open up your favorite browser and go to http://127.0.0.1:8383.
+## Table of Contents
+1. [Client Setup](#client-setup)
+   - [Site Settings](#site-settings)
+   - [Logging In](#logging-in)
+   - [Using Select Sync](#using-select-sync)
+2. [Server Setup](#server-setup)
+   - [Site Settings](#site-settings-1)
+   - [Adding Users](#adding-users)
+   - [Editing Users](#editing-users)
+   - [Admin User Configuration](#admin-user-configuration)
 
-#### Site Settings
-Click on "Site Settings".
-    - **Syncthing API Token**: The API token for the local Syncthing API key.
-    - **SSSS URL**: This is the Syncthing Select Sync Server URL.  `http(s)://<DOMAIN || IP:PORT>`.  For HTTPS use a reverse proxy with Cloud Flare (Or someone else).
-    - **SSSS User**: Your username for the Syncthing Select Sync Server.
-    - **SSSS Pass**: Your password for the Syncthing Select Sync Server.
-    - **Syncthing URL**: Local ip and port: 127.0.0.1:8384.
+---
 
-After filling these feilds click `Save Site Settings`.  If you need to change somthing later on, just fill one of the fields and click `Save Site Settings`.  Only the feilds that have data will be saved.
+## Client Setup
 
-#### Logging in
-To log into the server with the client, click on the text next to `Site Settings`.
-    - `(Not Logged in)` > Not logged in.
-    - `Not Logged in` > Tried to log in, but could not because creds are wrong.
-    - `Server Error` > Could not connect to server.
-    - `Logged In` > Logged in.
+To configure the client, open your browser and navigate to [http://127.0.0.1:8383](http://127.0.0.1:8383).
 
-#### Select Sync
-To use the select sync, click on a item in the **Accessible Folders** Section.  This will take you to a new page called **Folder and File Explorer**.  Here you can select folders and files to sync from Syncthing.  This works by editing the .stignore file of the root folder.  Clicking on the Sync checkbox will update the .stignore and will start syncing the item.  Unchecking the box will update the .stignore file and then delete it on the client to save space.
+### Site Settings
+1. Click on **Site Settings**.
+2. Fill out the following fields:
+   - **Syncthing API Token**: API token for the local Syncthing instance.
+   - **SSSS URL**: URL of the Syncthing Select Sync Server. Use the format: `http(s)://<DOMAIN || IP:PORT>`. For HTTPS, use a reverse proxy (e.g., Cloudflare).
+   - **SSSS User**: Your username for the Syncthing Select Sync Server.
+   - **SSSS Pass**: Your password for the Syncthing Select Sync Server.
+   - **Syncthing URL**: Local IP and port (e.g., `127.0.0.1:8384`).
 
-### Setup Server
+3. Click **Save Site Settings**.  
+   - To update settings later, modify only the required fields and save again.
 
-After starting up the server you will need to change a few settings.  So first thing is open up your favorite browser and go to `http://<IP OF SERVER>:8383`.  If you have SSL setup with the server then just go to the url.  You will be met with a login screen with the default login as `ADMIN` as both username and password.
+### Logging In
+To log in, click the text next to **Site Settings** to check your status:
+- **(Not Logged In)**: Not logged in yet.
+- **Not Logged In**: Login attempt failed (incorrect credentials).
+- **Server Error**: Unable to connect to the server.
+- **Logged In**: Successfully logged in.
 
-#### Site Settings
-Click on "Site Settings".
-    - **Syncthing API Token**: The API token for the local Syncthing API key.
-    - **SSSS URL**: Leave this alown because if is default of `0.0.0.0:8383`. You can change the port here, but leave the IP as `0.0.0.0` so you can access it anywhere on LAN or WAN
-    - **Syncthing URL**: Local ip and port: `127.0.0.1:8384`.
+### Using Select Sync
+1. Select an item in the **Accessible Folders** section to open the **Folder and File Explorer**.
+2. Use the interface to sync files and folders:
+   - **Sync Checkbox**: 
+     - Checking: Adds the item to the `.stignore` file and starts syncing.
+     - Unchecking: Updates the `.stignore` file and deletes the item locally to free up space.
 
-After filling these feilds click `Save Site Settings`.  If you need to change somthing later on, just fill one of the fields and click `Save Site Settings`.  Only the feilds that have data will be saved.
+---
 
-#### Add User
-Adding a new user.
-    - **Username**: Username for a new user.
-    - **Password**: New password for a user.
-    - **Role**: `0-255`. `255` is `ADMIN`.
-    - **Folders**: `[{'folder': 'FOLDER_ID'}]`.  This is a string of all files the user can access. (Can only be changed by a `ADMIN` user).
+## Server Setup
 
-#### Edit User
-Edit a user. It has the same data as the add user, and the `ADMIN` can update any user, but a regular user can update there own user.
+To configure the server, open your browser and navigate to `http://<SERVER_IP>:8383`. If SSL is set up, use the secure URL. By default, the login credentials are:
 
-#### ADMIN USER
-One you create a new ADMIN user or your own user, change the ADMIN password, and change the role to 0, and change the folders to `[]`.  This way it makes this user worthless.
+- **Username**: `ADMIN`
+- **Password**: `ADMIN`
+
+### Site Settings
+1. Click on **Site Settings**.
+2. Fill out the following fields:
+   - **Syncthing API Token**: API token for the local Syncthing instance.
+   - **SSSS URL**: Default is `0.0.0.0:8383`. Leave the IP as `0.0.0.0` to allow access from both LAN and WAN.
+   - **Syncthing URL**: Local IP and port (e.g., `127.0.0.1:8384`).
+
+3. Click **Save Site Settings**.  
+   - To update settings later, modify only the required fields and save again.
+
+### Adding Users
+To add a user:
+1. Enter the following details:
+   - **Username**: The user's username.
+   - **Password**: The user's password.
+   - **Role**: A value between `0-255` (where `255` is `ADMIN`).
+   - **Folders**: A JSON string of folders the user can access (e.g., `"[{'folder': 'FOLDER_ID'}]"`).
+2. Click **Add User**.
+
+### Editing Users
+Admins can update any user, while regular users can update only their own information. Use the same fields as in **Adding Users**.
+
+### Admin User Configuration
+After creating a new admin user or setting up your personal account:
+1. Change the default `ADMIN` user's password.
+2. Set the `ADMIN` user's role to `0`.
+3. Clear the `Folders` field by setting it to `[]`.  
+   This ensures the default admin account is no longer usable, enhancing security.
+
+---
+
+### Notes
+- Always secure your setup with HTTPS if exposing it to the internet.
+- Keep API tokens and passwords confidential.
