@@ -16,6 +16,7 @@
    - [Adding Users](#adding-users)
    - [Editing Users](#editing-users)
    - [Admin User Configuration](#admin-user-configuration)
+3. [Docs](docs/main-docs.md)
 
 ---
 
