@@ -1,29 +1,35 @@
 # Syncthing Select Sync API Documentation
 
-Welcome to the API documentation for Syncthing Select Sync. Below are links to the specific API endpoints that are available:
+Welcome to the API documentation for Syncthing Select Sync. Below you'll find a list of available API endpoints with links to their detailed documentation.
 
-- [Client Connection](client_connection.md)  
-  Learn how the client handles session cookies and maintains a connection with the server.
+---
 
-- [Login](login.md)  
-  Find out how to authenticate with the server by providing a username and password.
+## API Endpoints
 
-- [Update Password](update-password.md)  
-  Learn how to update a user's password when they are logged in.
+### [Client Connection](client_connection.md)  
+Understand how the client handles session cookies and maintains a persistent connection with the server.
 
-- [Update User](update-user.md)  
-  Learn how to update user details, excluding the username and ID.
+### [Login](login.md)  
+Authenticate with the server by providing a valid username and password.
 
-- [Delete User](delete-user.md)  
-  Discover how to delete a user from the system (admin-only access).
+### [Update Password](update-password.md)  
+Learn how users can update their password while logged in.
 
-- [Add User](add-user.md)  
-  Find out how to add a new user to the system (admin-only access).
+### [Update User](update-user.md)  
+Explore how to update user details, excluding username and ID.
 
-- [User Allowed Folders API](get-allowed-folders.md)  
-  Returns allowed folders for the user.
+### [Delete User](delete-user.md)  
+Guidelines for deleting a user from the system (admin-only access).
 
-- [Get Folder Items](get-ssss-itmes.md)  
-  Find out how to add a new user to the system (admin-only access).
+### [Add User](add-user.md)  
+Step-by-step instructions for adding a new user to the system (admin-only access).
 
-Use the links above to navigate through the documentation and get detailed information about each API endpoint. If you have any further questions, feel free to reach out!
+### [User Allowed Folders API](get-allowed-folders.md)  
+Retrieve the list of folders accessible to the user.
+
+### [Get Folder Items](get-ssss-items.md)  
+Learn how to retrieve folder items from the system.
+
+---
+
+Use the links above to explore each endpoint in detail. If you have additional questions, feel free to reach out for support!
