@@ -2,7 +2,7 @@
 
 **Select Sync for Syncthing**
 
-#### **_This project is currently in development._**
+#### **_This project is currently in development. Expect Bugs._**
 
 ---
 
