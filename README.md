@@ -6,11 +6,12 @@
 
 ---
 
-![SSSS Home page](/docs/Images/Screenshot%202024-11-27%20095926.png)
+![SSSS Home page](/docs/Images/SSSC-Home.png
+)
 
 ---
 
-![SSSC Folder File page](/docs/Images/Screenshot%202024-11-27%20095940.png)
+![SSSC Folder File page](/docs/Images/SSSC-Home.png)
 
 ---
 
