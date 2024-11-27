@@ -6,6 +6,14 @@
 
 ---
 
+![SSSS Home page](/docs/Images/Screenshot%202024-11-27%20095926.png)
+
+---
+
+![SSSC Folder File page](/docs/Images/Screenshot%202024-11-27%20095940.png)
+
+---
+
 ## Table of Contents
 1. [Client Setup](#client-setup)
    - [Site Settings](#site-settings)
