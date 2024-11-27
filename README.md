@@ -6,15 +6,6 @@
 
 ---
 
-![SSSS Home page](/docs/Images/SSSC-Home.png
-)
-
----
-
-![SSSC Folder File page](/docs/Images/SSSC-Home.png)
-
----
-
 ## Table of Contents
 1. [Client Setup](#client-setup)
    - [Site Settings](#site-settings)
@@ -25,7 +16,8 @@
    - [Adding Users](#adding-users)
    - [Editing Users](#editing-users)
    - [Admin User Configuration](#admin-user-configuration)
-3. [Docs](docs/main-docs.md)
+3. [Images](#images)
+4. [Docs](docs/main-docs.md)
 
 ---
 
@@ -102,3 +94,25 @@ After creating a new admin user or setting up your personal account:
 ### Notes
 - Always secure your setup with HTTPS if exposing it to the internet.
 - Keep API tokens and passwords confidential.
+
+## Images
+---
+
+![SSSS Home page](/docs/Images/SSSC-Home.png
+)
+
+---
+
+![SSSC Folder File page](/docs/Images/SSSC-Home.png)
+
+---
+
+![SSSS Add New User](/docs/Images/SSSS-Add-New-User.png)
+
+---
+
+![SSSS Edit User](/docs/Images/SSSS-Edit-User.png)
+
+---
+
+![SSSC Folder File Explorer](/docs/Images/SSSC-Folder-File-Explorer.png)
