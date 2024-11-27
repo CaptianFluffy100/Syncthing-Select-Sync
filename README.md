@@ -98,8 +98,7 @@ After creating a new admin user or setting up your personal account:
 ## Images
 ---
 
-![SSSS Home page](/docs/Images/SSSC-Home.png
-)
+![SSSS Home page](/docs/Images/SSSS-Home.png)
 
 ---
 
