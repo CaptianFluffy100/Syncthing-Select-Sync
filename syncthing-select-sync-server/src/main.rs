@@ -155,29 +155,32 @@ async fn login(
     mut guest: Guest,
     Json(payload): Json<LoginUser>,
 ) -> StatusCode {
-    // println!("Payload: {payload:?}");
-    out::ok(SCRIPT, "Logging in User!");
+    out::ok(SCRIPT, &format!("Login attempt for user: {}", payload.username));
     
     let conn = database_connect();
 
-    let found_user = database_get_user(&conn, payload.username);
+    let found_user = database_get_user(&conn, payload.username.clone());
 
     if found_user.is_none() {
+        out::warning(SCRIPT, &format!("Login failed: User '{}' not found", payload.username));
         return StatusCode::IM_A_TEAPOT;
     }
 
     let user = found_user.unwrap();
+    let hashed_password = sha256_hash(payload.password, user.salt.clone());
 
-    if sha256_hash(payload.password, user.salt) == user.password {
-        // login
+    if hashed_password == user.password {
+        // login successful
         guest.guest_data.username = user.username.clone();
         guest.guest_data.logged_in = true;
         guest.guest_data.role = user.role;
         Guest::update_session(&guest.session, &guest.guest_data);
+        out::ok(SCRIPT, &format!("User '{}' logged in successfully", user.username));
         return StatusCode::OK;
     }
     
-    return StatusCode::SERVICE_UNAVAILABLE;
+    out::warning(SCRIPT, &format!("Login failed: Incorrect password for user '{}'", payload.username));
+    return StatusCode::IM_A_TEAPOT; // Changed from SERVICE_UNAVAILABLE to IM_A_TEAPOT for consistency
 }
 
 async fn logout(

@@ -52,12 +52,12 @@ async fn main() {
         Ok(mut db) => {
             match get_selected_items(&db) {
                 Ok(Some(mut saved_files)) => {
-                    let original_files = saved_files.clone();
+        let original_files = saved_files.clone();
 
-                    // Consolidate paths
-                    consolidate_paths(&mut saved_files);
+        // Consolidate paths
+        consolidate_paths(&mut saved_files);
 
-                    // Update the database with the new paths and remove unnecessary entries
+        // Update the database with the new paths and remove unnecessary entries
                     match update_database(&mut db, &saved_files, &original_files) {
                         Ok(_) => out::ok(SCRIPT, "Consolidation Passed"),
                         Err(e) => out::warning(SCRIPT, &format!("Consolidation Failed: {}", e)),
@@ -117,19 +117,29 @@ async fn home_page(State(client): State<Arc<Client>>) -> impl IntoResponse {
         Ok(conn) => {
             match get_site_setting(&conn, "ssss-url") {
                 Some(ss) => {
-    out::debug(SCRIPT, &format!("SiteSettings: {ss:?}"));
-    match client.get(&format!("{}/check-status", ss.value)).send().await {
+                    // Ensure URL has protocol
+                    let base_url = if ss.value.starts_with("http://") || ss.value.starts_with("https://") {
+                        ss.value.clone()
+                    } else {
+                        format!("http://{}", ss.value)
+                    };
+                    
+                    let status_url = format!("{}/check-status", base_url);
+                    match client.get(&status_url).send().await {
         Ok(response) => {
-            if response.status() == StatusCode::OK {
+                            let status = response.status();
+                            if status == StatusCode::OK {
                                 "Logged In".to_string()
-            } else if response.status() == StatusCode::IM_A_TEAPOT {
+                            } else if status == StatusCode::IM_A_TEAPOT {
                                 "Not Logged In".to_string()
             } else {
+                                out::warning(SCRIPT, &format!("Unexpected status check response: {}", status));
                                 "Server Error".to_string()
                             }
                         },
                         Err(err) => {
-                            out::error(SCRIPT, &format!("Request failed: {:?}", err));
+                            out::error(SCRIPT, &format!("Status check request failed: {}", err));
+                            out::error(SCRIPT, &format!("Failed to connect to server at: {}", status_url));
                             "(Not Logged in)".to_string()
                         },
                     }
@@ -180,7 +190,7 @@ async fn login(State(client): State<Arc<Client>>) -> StatusCode {
             return StatusCode::INTERNAL_SERVER_ERROR;
         }
     };
-    out::debug(SCRIPT, &format!("SiteSettings: {ss:?}"));
+    out::ok(SCRIPT, &format!("Attempting login to server: {}", ss.value));
 
     let ss_user = match get_site_setting(&conn, "ssss-user") {
         Some(s) => s,
@@ -198,18 +208,42 @@ async fn login(State(client): State<Arc<Client>>) -> StatusCode {
         }
     };
 
-    match client.post(&format!("{}/api/login", ss.value))
+    // Ensure URL has protocol
+    let base_url = if ss.value.starts_with("http://") || ss.value.starts_with("https://") {
+        ss.value.clone()
+    } else {
+        format!("http://{}", ss.value)
+    };
+    
+    let login_url = format!("{}/api/login", base_url);
+    out::ok(SCRIPT, &format!("Login URL: {}", login_url));
+    out::debug(SCRIPT, &format!("Login user: {}", ss_user.value));
+
+    match client.post(&login_url)
         .header("Content-Type", "application/json")
-        .json(&LoginUser{username: ss_user.value, password: ss_pass.value})
+        .json(&LoginUser{username: ss_user.value.clone(), password: ss_pass.value.clone()})
         .send()
         .await
     {
         Ok(response) => {
-            out::debug(SCRIPT, &format!("Login response: {:?}", response.status()));
-            response.status()
+            let status = response.status();
+            out::ok(SCRIPT, &format!("Login response: {} ({})", status.as_u16(), status.canonical_reason().unwrap_or("Unknown")));
+            
+            // Log more details for debugging
+            if status == StatusCode::OK {
+                out::ok(SCRIPT, "Login successful!");
+            } else if status == StatusCode::IM_A_TEAPOT {
+                out::warning(SCRIPT, "Login failed: Invalid username or password");
+            } else {
+                out::warning(SCRIPT, &format!("Login failed with status: {}", status));
+            }
+            
+            status
         },
         Err(e) => {
             out::error(SCRIPT, &format!("Login request failed: {}", e));
+            out::error(SCRIPT, &format!("Failed to connect to server at: {}", login_url));
+            out::error(SCRIPT, "Check that the server is running and the URL is correct");
             StatusCode::SERVICE_UNAVAILABLE
         },
     }

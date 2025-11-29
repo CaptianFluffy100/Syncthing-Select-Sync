@@ -133,6 +133,9 @@
                         case 503:
                             document.getElementById("error-msg").innerText = "The service is unavailable.";
                             break;
+                        case 401:
+                            document.getElementById("error-msg").innerText = "Username or password is incorrect.";
+                            break;
                         default:
                             document.getElementById("error-msg").innerText = "Unknown error!";
                     }
