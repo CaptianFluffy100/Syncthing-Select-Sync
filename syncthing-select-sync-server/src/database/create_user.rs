@@ -1,4 +1,4 @@
-use rand::{distributions::Alphanumeric, Rng};
+use rand::Rng;
 use rusqlite::{params, Connection};
 use sha2::{Sha256, Digest};
 
@@ -45,10 +45,13 @@ pub fn get_all_users(conn: &Connection) -> Vec<User> {
 }
 
 pub fn generate_salt() -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(16)
-        .map(char::from)
+    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let mut rng = rand::thread_rng();
+    (0..16)
+        .map(|_| {
+            let idx = rng.gen_range(0..CHARSET.len());
+            CHARSET[idx] as char
+        })
         .collect()
 }
 
