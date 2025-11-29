@@ -71,20 +71,34 @@ pub fn database_create_site_settings(conn: &Connection) {
         );
 
         match out {
-            Ok(0) => {
-                // println!("Table exists or was created.");
-                // Add api token setting
-                create_site_setting(&conn, SiteSetting {id: 0, key: "api-key".to_string(), value: "NULL".to_string()});
-                // Add ST api setting url
-                create_site_setting(&conn, SiteSetting {id: 0, key: "st-url".to_string(), value: "127.0.0.1:8384".to_string()});
-                // Add SSSS api url
-                create_site_setting(&conn, SiteSetting {id: 0, key: "ssss-url".to_string(), value: "0.0.0.0:8383".to_string()});
-                // Add indexing schedule settings
-                create_site_setting(&conn, SiteSetting {id: 0, key: "index-schedule-time".to_string(), value: "00:00".to_string()});
-                create_site_setting(&conn, SiteSetting {id: 0, key: "index-schedule-days".to_string(), value: "0,1,2,3,4,5,6".to_string()});
+            Ok(_) => {
+                // Table was created, now add default settings
+                out::ok(SCRIPT, "Created site_settings table");
             },
-            Err(e) => out::error(SCRIPT, &format!("Error creating table: {}", e)),
-            _ => out::warning(SCRIPT, &format!("Unexpected result: {out:?}")),
+            Err(e) => {
+                out::error(SCRIPT, &format!("Error creating table: {}", e));
+                return;
+            },
+        }
+    }
+    
+    // Ensure all default settings exist (whether table was just created or already existed)
+    let default_settings = vec![
+        ("api-key", "NULL"),
+        ("st-url", "127.0.0.1:8384"),
+        ("ssss-url", "0.0.0.0:8383"),
+        ("index-schedule-time", "00:00"),
+        ("index-schedule-days", "0,1,2,3,4,5,6"),
+    ];
+    
+    for (key, default_value) in default_settings {
+        if get_site_setting(conn, key).is_none() {
+            create_site_setting(conn, SiteSetting {
+                id: 0,
+                key: key.to_string(),
+                value: default_value.to_string(),
+            });
+            out::ok(SCRIPT, &format!("Created default setting: {}", key));
         }
     }
 }

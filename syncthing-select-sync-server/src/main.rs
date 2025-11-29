@@ -14,6 +14,7 @@ use database::db::database_connect;
 use database::db::database_get_user;
 use database::db::get_site_setting;
 use database::db::set_site_setting;
+use database::db::create_site_setting;
 use guest::GuestData;
 use reqwest::Client;
 use sha2::Sha256;
@@ -22,6 +23,7 @@ use structs::DeleteUser;
 use structs::Folder;
 use structs::FolderFile;
 use structs::FolderSearch;
+use structs::SiteSetting;
 use structs::User;
 use structs::UserUpdate;
 use std::io::Read;
@@ -80,7 +82,17 @@ async fn main() {
     
     // Get the url for the website
     let conn = database_connect();
-    let ss = get_site_setting(&conn, "ssss-url").unwrap();
+    let ss = get_site_setting(&conn, "ssss-url")
+        .unwrap_or_else(|| {
+            out::warning(SCRIPT, "ssss-url not found, creating default");
+            let default = SiteSetting {
+                id: 0,
+                key: "ssss-url".to_string(),
+                value: "0.0.0.0:8383".to_string(),
+            };
+            create_site_setting(&conn, default.clone());
+            default
+        });
 
     let session_store = MemoryStore::default();
     // let session_layer = SessionuserOnInactivity(Duration::seconds(60*60*24*30)));
