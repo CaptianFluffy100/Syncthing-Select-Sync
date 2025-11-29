@@ -79,6 +79,9 @@ pub fn database_create_site_settings(conn: &Connection) {
                 create_site_setting(&conn, SiteSetting {id: 0, key: "st-url".to_string(), value: "127.0.0.1:8384".to_string()});
                 // Add SSSS api url
                 create_site_setting(&conn, SiteSetting {id: 0, key: "ssss-url".to_string(), value: "0.0.0.0:8383".to_string()});
+                // Add indexing schedule settings
+                create_site_setting(&conn, SiteSetting {id: 0, key: "index-schedule-time".to_string(), value: "00:00".to_string()});
+                create_site_setting(&conn, SiteSetting {id: 0, key: "index-schedule-days".to_string(), value: "0,1,2,3,4,5,6".to_string()});
             },
             Err(e) => out::error(SCRIPT, &format!("Error creating table: {}", e)),
             _ => out::warning(SCRIPT, &format!("Unexpected result: {out:?}")),

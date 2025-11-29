@@ -212,7 +212,10 @@
             background-color: #1e1e1e;
             padding: 2rem;
             border-radius: 8px;
-            width: 300px;
+            width: 400px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
             color: #e0e0e0;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
             position: relative;
@@ -242,18 +245,35 @@
             color: #90caf9;
         }
 
-        .popup-field input, .popup-field textarea {
+        .popup-field input, .popup-field textarea, .popup-field select {
             width: 100%;
             padding: 0.5rem;
             border-radius: 4px;
             background-color: #2b2b2b;
             border: 1px solid #424242;
             color: #e0e0e0;
+            font-family: inherit;
         }
 
-        .popup-field input:focus, .popup-field textarea:focus {
+        .popup-field input:focus, .popup-field textarea:focus, .popup-field select:focus {
             border-color: #90caf9;
             outline: none;
+        }
+
+        .popup-field select[multiple] {
+            min-height: 120px;
+            padding: 0.5rem;
+        }
+
+        .popup-field select option {
+            background-color: #2b2b2b;
+            color: #e0e0e0;
+            padding: 0.5rem;
+        }
+
+        .popup-field select option:checked {
+            background-color: #2196f3;
+            color: white;
         }
 
         button {
@@ -370,8 +390,13 @@
                 </div>
 
                 <div class="popup-field">
-                    <label>Folders:</label>
-                    <input id="new-array" type="text" class="popup-input" placeholder="e.g., [{'folder':'FOLDER_ID'}]" />
+                    <label for="new-folders">Allowed Folders:</label>
+                    <select id="new-folders" multiple size="5">
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                    <small style="color: #b0bec5; font-size: 0.8rem; display: block; margin-top: 0.25rem;">
+                        Hold Ctrl/Cmd to select multiple folders
+                    </small>
                 </div>
             </div>
             <button id="save-user" onclick="addUser()">Submit</button>
@@ -397,8 +422,13 @@
                     <input id="edit-role" type="text" />
                 </div>
                 <div class="popup-field">
-                    <label for="edit-array">Array of Folders:</label>
-                    <textarea id="edit-array" rows="3"></textarea>
+                    <label for="edit-folders">Allowed Folders:</label>
+                    <select id="edit-folders" multiple size="5">
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                    <small style="color: #b0bec5; font-size: 0.8rem; display: block; margin-top: 0.25rem;">
+                        Hold Ctrl/Cmd to select multiple folders
+                    </small>
                 </div>
             </div>
             <button id="save-user" onclick="saveUser()">Save Changes</button>
@@ -423,13 +453,87 @@
                     <label for="edit-ssss-url">SSSS URL:</label>
                     <input id="edit-ssss-url" type="text" placeholder="(exp: 0.0.0.0:8383)" />
                 </div>
+                <div class="popup-field">
+                    <label for="edit-index-time">Indexing Schedule Time:</label>
+                    <input id="edit-index-time" type="time" value="00:00" />
+                    <small style="color: #b0bec5; font-size: 0.8rem; display: block; margin-top: 0.25rem;">
+                        Time when indexing should run (24-hour format)
+                    </small>
+                </div>
+                <div class="popup-field">
+                    <label for="edit-index-days">Indexing Schedule Days:</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;">
+                            <input type="checkbox" value="0" class="index-day-checkbox" /> Sun
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;">
+                            <input type="checkbox" value="1" class="index-day-checkbox" /> Mon
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;">
+                            <input type="checkbox" value="2" class="index-day-checkbox" /> Tue
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;">
+                            <input type="checkbox" value="3" class="index-day-checkbox" /> Wed
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;">
+                            <input type="checkbox" value="4" class="index-day-checkbox" /> Thu
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;">
+                            <input type="checkbox" value="5" class="index-day-checkbox" /> Fri
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem;">
+                            <input type="checkbox" value="6" class="index-day-checkbox" /> Sat
+                        </label>
+                    </div>
+                    <small style="color: #b0bec5; font-size: 0.8rem; display: block; margin-top: 0.25rem;">
+                        Select days when indexing should run
+                    </small>
+                </div>
             </div>
             <button id="save-user" onclick="saveSiteSettings()">Save Site Settings</button>
+            <button onclick="triggerIndexing()" style="background-color: #4caf50; margin-top: 0.5rem;">Trigger Indexing Now</button>
         </div>
     </div>
     
 
     <script>
+        // Folder data injected from server
+        const foldersData = <FoldersData/>;
+        const userData = <UsersData/>;
+
+        // Populate folder selects
+        function populateFolderSelects() {
+            const newFoldersSelect = document.getElementById("new-folders");
+            const editFoldersSelect = document.getElementById("edit-folders");
+            
+            // Clear existing options
+            if (newFoldersSelect) {
+                newFoldersSelect.innerHTML = "";
+            }
+            if (editFoldersSelect) {
+                editFoldersSelect.innerHTML = "";
+            }
+            
+            // Add folder options
+            foldersData.forEach(folder => {
+                const option = document.createElement("option");
+                option.value = folder.id;
+                option.textContent = `${folder.label} (${folder.id})`;
+                
+                if (newFoldersSelect) {
+                    newFoldersSelect.appendChild(option.cloneNode(true));
+                }
+                if (editFoldersSelect) {
+                    editFoldersSelect.appendChild(option);
+                }
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener("DOMContentLoaded", function() {
+            populateFolderSelects();
+        });
+
         function logout() {
             let url = window.location.origin + "/api/logout";
             fetch(url, {
@@ -447,10 +551,7 @@
         }
 
         function openPopup(userId) {
-            // Example of fetching user data based on ID
             console.log("Fetching data for user ID:", userId);
-            // Simulated user data; replace this with an actual fetch call
-            const userData = <UsersData/>;
             let user = null;
             for (let i = 0; i < userData.length; i++) {
                 let id = "user-"+userData[i].id;
@@ -467,9 +568,26 @@
         
             // Populate the popup with user data
             document.getElementById("edit-username").value = user.username;
-            document.getElementById("edit-password").value = user.password;
+            document.getElementById("edit-password").value = "";
             document.getElementById("edit-role").value = user.role;
-            document.getElementById("edit-array").value = JSON.stringify(user.allowed_folders);
+            
+            // Populate folder select
+            const editFoldersSelect = document.getElementById("edit-folders");
+            if (editFoldersSelect) {
+                // Clear previous selections
+                Array.from(editFoldersSelect.options).forEach(option => {
+                    option.selected = false;
+                });
+                
+                // Select user's allowed folders
+                user.allowed_folders.forEach(allowedFolder => {
+                    Array.from(editFoldersSelect.options).forEach(option => {
+                        if (option.value === allowedFolder.folder) {
+                            option.selected = true;
+                        }
+                    });
+                });
+            }
         
             document.getElementById("user-popup").classList.remove("hidden");
         }
@@ -479,18 +597,23 @@
         }
         
         function saveUser() {
+            const editFoldersSelect = document.getElementById("edit-folders");
+            const selectedFolders = Array.from(editFoldersSelect.selectedOptions).map(option => ({
+                folder: option.value
+            }));
+            const allowed_folders = JSON.stringify(selectedFolders);
+            
             // Get updated values from the inputs
             const updatedUser = {
                 id: 0,
                 username: document.getElementById("edit-username").value,
-                password: document.getElementById("edit-password").value, // Normally, hashed on the backend
+                password: document.getElementById("edit-password").value,
                 salt: "",
                 role: Number(document.getElementById("edit-role").value),
-                allowed_folders: document.getElementById("edit-array").value
+                allowed_folders: allowed_folders
             };
         
             console.log("Updated User:", updatedUser);
-            // Send the updated data to your server or update your local data
             let url = window.location.origin + "/api/update-user";
             fetch(url, {
                 method: "POST",
@@ -500,10 +623,16 @@
                 body: JSON.stringify(updatedUser),
             })
             .then((response) => {
-                
+                if (response.ok) {
+                    alert("User updated successfully!");
+                    location.reload();
+                } else {
+                    alert("Failed to update user.");
+                }
             })
             .catch((error) => {
                 console.error("Error:", error);
+                alert("Error updating user.");
             });
 
             closePopup();
@@ -550,6 +679,16 @@
 
         // Open the Add User Popup
         function openAddUserPopup() {
+            // Clear form
+            document.getElementById("new-username").value = "";
+            document.getElementById("new-password").value = "";
+            document.getElementById("new-role").value = "0";
+            const newFoldersSelect = document.getElementById("new-folders");
+            if (newFoldersSelect) {
+                Array.from(newFoldersSelect.options).forEach(option => {
+                    option.selected = false;
+                });
+            }
             document.getElementById("add-user-popup").classList.remove("hidden");
         }
 
@@ -563,12 +702,18 @@
             const username = document.getElementById("new-username").value;
             const password = document.getElementById("new-password").value;
             const role = Number(document.getElementById("new-role").value);
-            const allowed_folders = document.getElementById("new-array").value;
-        
-            if (!username || !password || !role) {
-                alert("Please fill out all fields.");
+            const newFoldersSelect = document.getElementById("new-folders");
+            
+            if (!username || !password) {
+                alert("Please fill out username and password.");
                 return;
             }
+            
+            // Get selected folders
+            const selectedFolders = Array.from(newFoldersSelect.selectedOptions).map(option => ({
+                folder: option.value
+            }));
+            const allowed_folders = JSON.stringify(selectedFolders);
         
             const newUser = {
                 id: 0,
@@ -590,7 +735,7 @@
                 .then(response => {
                     if (response.ok) {
                         alert("User added successfully!");
-                        location.reload(); // Reload the page to update the user table
+                        location.reload();
                     } else {
                         alert("Failed to add user. Please try again.");
                     }
@@ -598,27 +743,34 @@
                 .catch(error => console.error("Error adding user:", error));
         }
 
-        // Site Settings Code
-        // Open the Add User Popup
+
+        // Open the Site Settings Popup
         function openEditSSPopup() {
+            // Load current settings (you may want to fetch these from the server)
             document.getElementById("site-settings-popup").classList.remove("hidden");
         }
 
-        // Close the Add User Popup
+        // Close the Site Settings Popup
         function closeEditSSPopup() {
             document.getElementById("site-settings-popup").classList.add("hidden");
         }
 
         function saveSiteSettings() {
+            // Get selected days
+            const selectedDays = Array.from(document.querySelectorAll(".index-day-checkbox:checked"))
+                .map(checkbox => checkbox.value)
+                .join(",");
+            
             // Get updated values from the inputs
             const updateSS = {
                 api_token: document.getElementById("edit-api-token").value,
-                st_url: document.getElementById("edit-st-url").value, // Normally, hashed on the backend
+                st_url: document.getElementById("edit-st-url").value,
                 ssss_url: document.getElementById("edit-ssss-url").value,
+                index_schedule_time: document.getElementById("edit-index-time").value,
+                index_schedule_days: selectedDays || "0,1,2,3,4,5,6",
             };
         
             console.log("Updated Site Settings:", updateSS);
-            // Send the updated data to your server or update your local data
             let url = window.location.origin + "/api/update-site-settings";
             fetch(url, {
                 method: "POST",
@@ -628,13 +780,38 @@
                 body: JSON.stringify(updateSS),
             })
             .then((response) => {
-                closeEditSSPopup();
+                if (response.ok) {
+                    alert("Site settings updated successfully!");
+                    closeEditSSPopup();
+                } else {
+                    alert("Failed to update site settings.");
+                }
             })
             .catch((error) => {
                 console.error("Error:", error);
+                alert("Error updating site settings.");
             });
+        }
 
-            closePopup();
+        function triggerIndexing() {
+            let url = window.location.origin + "/api/trigger-indexing";
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+            .then((response) => {
+                if (response.ok) {
+                    alert("Indexing triggered successfully!");
+                } else {
+                    alert("Failed to trigger indexing.");
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+                alert("Error triggering indexing.");
+            });
         }
     </script>
 </body>

@@ -148,7 +148,7 @@ impl User {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
     pub id: String,
     pub label: String,

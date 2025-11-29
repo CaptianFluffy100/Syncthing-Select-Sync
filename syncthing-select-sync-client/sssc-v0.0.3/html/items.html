@@ -107,57 +107,6 @@
             font-weight: bold; /* Highlight usernames */
         }
 
-        /* Status indicators */
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.875rem;
-            font-weight: bold;
-        }
-
-        .status-in-cloud {
-            background-color: #424242;
-            color: #90caf9;
-        }
-
-        .status-syncing {
-            background-color: #ff9800;
-            color: #121212;
-        }
-
-        .status-synced {
-            background-color: #4caf50;
-            color: #121212;
-        }
-
-        .virtual-file {
-            opacity: 0.7;
-            font-style: italic;
-        }
-
-        /* Context menu */
-        .context-menu {
-            position: absolute;
-            background-color: #313131;
-            border: 1px solid #424242;
-            border-radius: 4px;
-            padding: 0.5rem 0;
-            min-width: 150px;
-            z-index: 1000;
-            display: none;
-        }
-
-        .context-menu-item {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            color: #e0e0e0;
-        }
-
-        .context-menu-item:hover {
-            background-color: #424242;
-        }
-
         /* Folder Section */
         .folder-section {
             padding: 2rem 1rem;
@@ -229,7 +178,6 @@
                         <th>Name</th>
                         <th>Path</th>
                         <th>Type</th>
-                        <th>Status</th>
                         <th>Sync</th>
                     </tr>
                 </thead>
@@ -238,23 +186,15 @@
                 </tbody>
             </table>
         </div>
-
-        <!-- Context Menu -->
-        <div id="context-menu" class="context-menu">
-            <div class="context-menu-item" id="free-up-space">Free Up Space</div>
-        </div>
     </section>
 
     <script>
         // Sample data (to simulate `FolderFile` array)
         const folderFileTable = document.getElementById('folder-file-table');
         const breadcrumb = document.getElementById('breadcrumb');
-        const contextMenu = document.getElementById('context-menu');
         let currentPath = ""; // Track the current folder path
         let select_synced_items = [];
-        let folder_file_data = [];
-        let currentFolderId = "";
-        let contextMenuTarget = null;
+        let folder_file_data = []
 
         function updateBreadcrumb() {
             breadcrumb.innerHTML = ""; // Clear existing breadcrumb
@@ -322,79 +262,20 @@
             });
         }
         
-        async function updateTable() {
+        function updateTable() {
             folderFileTable.innerHTML = "";
 
-            // Get all items from folder and combine with virtual files from sync list
-            let allItems = [...folder_file_data];
-            
-            // Add virtual files (files in sync list but not in current folder view)
-            // Only show virtual files if we're viewing a specific folder (not root)
-            if (currentFolderId && select_synced_items && currentPath !== undefined) {
-                select_synced_items.forEach(syncedItem => {
-                    if (syncedItem.root === currentFolderId) {
-                        // Check if path matches current folder
-                        const pathMatches = currentPath === "" ? 
-                            !syncedItem.path.includes('/') : 
-                            syncedItem.path.startsWith(currentPath + '/') || syncedItem.path === currentPath;
-                        
-                        if (pathMatches) {
-                            // Check if this item is already in folder_file_data
-                            const exists = folder_file_data.some(item => 
-                                item.id === syncedItem.root && item.path === syncedItem.path
-                            );
-                            
-                            if (!exists) {
-                                // This is a virtual file - add it to the display
-                                const pathParts = syncedItem.path.split('/');
-                                const fileName = pathParts[pathParts.length - 1];
-                                allItems.push({
-                                    id: syncedItem.root,
-                                    name: fileName,
-                                    path: syncedItem.path,
-                                    is_file: syncedItem.is_file,
-                                    is_virtual: true,
-                                    sync_status: syncedItem.sync_status
-                                });
-                            }
-                        }
-                    }
-                });
-            }
-
-            for (const item of allItems) {
+            folder_file_data.forEach(item => {
                 const row = document.createElement('tr');
                 row.dataset.path = item.path;
                 row.dataset.isFile = item.is_file;
-                row.dataset.root = item.id;
-                if (item.is_virtual) {
-                    row.classList.add('virtual-file');
-                }
 
                 let synced_item = check_if_selected(item);
-                let fileStatus = await checkFileStatus(item.id, item.path);
 
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.checked = synced_item.isSelected;
                 checkbox.addEventListener('change', () => handleCheckboxChange(item, checkbox.checked, synced_item.syncedId));
-
-                // Status badge
-                const statusBadge = document.createElement('span');
-                statusBadge.classList.add('status-badge');
-                let statusText = 'in_cloud';
-                if (fileStatus && fileStatus.in_sync_list) {
-                    statusText = fileStatus.status || 'in_cloud';
-                } else if (synced_item.isSelected) {
-                    statusText = fileStatus && fileStatus.exists ? 'synced' : 'in_cloud';
-                }
-                
-                statusBadge.classList.add(`status-${statusText}`);
-                statusBadge.textContent = statusText === 'in_cloud' ? 'In Cloud' : 
-                                         statusText === 'syncing' ? 'Syncing...' : 'Synced';
-
-                const statusCell = document.createElement('td');
-                statusCell.appendChild(statusBadge);
 
                 row.innerHTML = `
                     <td class="${item.is_file ? 'file' : 'folder'}">${item.id}</td>
@@ -403,50 +284,20 @@
                     <td>${item.is_file ? 'File' : 'Folder'}</td>
                 `;
 
-                row.appendChild(statusCell);
-
                 const checkboxCell = document.createElement('td');
                 checkboxCell.appendChild(checkbox);
                 row.appendChild(checkboxCell);
 
-                // Handle clicks
-                if (item.is_file) {
-                    // For files, check if virtual and handle sync
-                    if (item.is_virtual || (synced_item.isSelected && !fileStatus.exists)) {
-                        row.style.cursor = 'pointer';
-                        row.addEventListener('click', async (event) => {
-                            if (event.target.tagName !== 'INPUT') {
-                                await syncFile(item.id, item.path);
-                            }
-                        });
-                    }
-                } else {
-                    // For folders, navigate
+                if (!item.is_file) {
                     row.addEventListener('click', (event) => {
-                        if (event.target.tagName !== 'INPUT') {
-                            currentPath = item.path;
+                        if (event.target.tagName !== 'INPUT') { // Only trigger if the target is not the checkbox
+                            currentPath = item.path; // Update current path
                             fetchFolderContents(item.id, item.path);
                         }
                     });
                 }
 
-                // Right-click context menu
-                row.addEventListener('contextmenu', (event) => {
-                    event.preventDefault();
-                    if (synced_item.isSelected && fileStatus && fileStatus.exists && item.is_file) {
-                        contextMenuTarget = item;
-                        contextMenu.style.display = 'block';
-                        contextMenu.style.left = event.pageX + 'px';
-                        contextMenu.style.top = event.pageY + 'px';
-                    }
-                });
-
                 folderFileTable.appendChild(row);
-            }
-
-            // Close context menu when clicking elsewhere
-            document.addEventListener('click', () => {
-                contextMenu.style.display = 'none';
             });
 
             updateBreadcrumb(); // Update breadcrumb after updating the table
@@ -480,7 +331,7 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log('Database updated:', data);
-                    fetchSelectSyncItems().then(() => updateTable());
+                    fetchSelectSyncItems();
                 })
                 .catch(error => {
                     console.error('Error updating database:', error);
@@ -500,7 +351,7 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log('Database updated:', data);
-                    fetchSelectSyncItems().then(() => updateTable());
+                    fetchSelectSyncItems();
                 })
                 .catch(error => {
                     console.error('Error updating database:', error);
@@ -524,7 +375,7 @@
 
         // Fetch folder contents
         function fetchFolderContents(folderId, folderPath) {
-            currentFolderId = folderId;
+
             const folderSearch = {
                 id: folderId,
                 path: folderPath,
@@ -547,86 +398,20 @@
                 .catch(error => console.error('Error fetching folder contents:', error));
         }
 
-        async function checkFileStatus(root, path) {
-            try {
-                const response = await fetch(window.location.origin + "/check-file-status", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ root, path })
-                });
-                return await response.json();
-            } catch (error) {
-                console.error('Error checking file status:', error);
-                return null;
-            }
-        }
-
-        async function syncFile(root, path) {
-            try {
-                const response = await fetch(window.location.origin + "/sync-file", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ root, path })
-                });
-                
-                if (response.ok) {
-                    // Refresh the table to update status
-                    await fetchSelectSyncItems();
-                    updateTable();
-                } else {
-                    alert('Failed to sync file');
-                }
-            } catch (error) {
-                console.error('Error syncing file:', error);
-                alert('Error syncing file');
-            }
-        }
-
-        async function freeUpSpace(root, path) {
-            try {
-                const response = await fetch(window.location.origin + "/free-up-space", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ root, path })
-                });
-                
-                if (response.ok) {
-                    // Refresh the table to update status
-                    await fetchSelectSyncItems();
-                    updateTable();
-                } else {
-                    alert('Failed to free up space');
-                }
-            } catch (error) {
-                console.error('Error freeing up space:', error);
-                alert('Error freeing up space');
-            }
-        }
-
         // Fetch folder contents
-        async function fetchSelectSyncItems() {
+        function fetchSelectSyncItems() {
             let url = window.location.origin + "/select-sync-items";
             fetch(url, {
                 method: 'GET',
             })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Synced items:', data);
+                    console.log('Folder contents:', data);
                     // Replace folderFileData and re-render table if necessary
                     select_synced_items = data;
-                    updateTable();
                 })
-                .catch(error => console.error('Error fetching synced items:', error));
+                .catch(error => console.error('Error fetching folder contents:', error));
         }
-
-        // Context menu handler
-        document.getElementById('free-up-space').addEventListener('click', () => {
-            if (contextMenuTarget) {
-                freeUpSpace(contextMenuTarget.id, contextMenuTarget.path);
-                contextMenu.style.display = 'none';
-                contextMenuTarget = null;
-            }
-        });
 
         fetchFolderContents("", "");
         fetchSelectSyncItems();

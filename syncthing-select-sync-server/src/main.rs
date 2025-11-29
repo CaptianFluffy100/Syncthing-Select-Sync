@@ -33,6 +33,8 @@ mod guest;
 mod database;
 mod structs;
 mod out;
+mod syncthing_config;
+mod file_indexer;
 
 use axum::{
     error_handling::HandleErrorLayer, BoxError, http::StatusCode, response::{Response, IntoResponse}, routing::{get, post}, Json, Router
@@ -63,6 +65,19 @@ const SCRIPT: &str = "MAIN";
 #[tokio::main]
 async fn main() {
     out::ok(SCRIPT, "Starting Syncthing Select Sync Server (SSSS)");
+    
+    // Auto-configure Syncthing API key if available
+    let syncthing_config = syncthing_config::SyncthingConfig::new();
+    syncthing_config.auto_configure_api_key();
+    
+    // Initialize file indexer
+    let file_indexer = file_indexer::FileIndexer::new();
+    if let Err(e) = file_indexer.initialize().await {
+        out::error(SCRIPT, &format!("Failed to initialize file indexer: {}", e));
+    } else {
+        out::ok(SCRIPT, "File indexer initialized");
+    }
+    
     // Get the url for the website
     let conn = database_connect();
     let ss = get_site_setting(&conn, "ssss-url").unwrap();
@@ -96,6 +111,7 @@ async fn main() {
         .route("/api/user-allowed-folders", get(get_user_allowed_folders))
         .route("/api/ssss/get-items", post(get_items_in_folder))
         .route("/api/update-site-settings", post(update_site_settings))
+        .route("/api/trigger-indexing", post(trigger_indexing))
         .layer(session_service);
 
     // run our app with hyper, listening globally on port 8383
@@ -184,28 +200,33 @@ async fn get_items_in_folder(
         return (StatusCode::IM_A_TEAPOT, "User not logged in").into_response();
     }
 
-    let folders = get_folders().await;
-    if folders.is_none() {
-        return (StatusCode::SERVICE_UNAVAILABLE, "Failed to get folders").into_response();
-    }
+    // Use indexed files from database instead of reading filesystem
+    match file_indexer::FileIndexer::get_indexed_files(&payload.id, &payload.path) {
+        Ok(files) => {
+            return Json(files).into_response();
+        }
+        Err(e) => {
+            out::error(SCRIPT, &format!("Failed to get indexed files: {}", e));
+            // Fallback to old method if indexing fails
+            let folders = get_folders().await;
+            if folders.is_none() {
+                return (StatusCode::SERVICE_UNAVAILABLE, "Failed to get folders").into_response();
+            }
 
-    let folders = folders.unwrap();
-
-    // // println!("Folders: {folders:?}");
-
-    for folder in folders {
-        if folder.id == payload.id {
-            // Get the files and folders in the directory
-            let home = home_dir().unwrap().to_string_lossy().to_string();
-            let r = format!("{}/", folder.path.replace("~", &home));
-            let p = format!("{}/{}", folder.path.replace("~", &home), payload.path);
-            // // println!("Path: {p}");
-            let path = Path::new(&p);
-            let files_and_folders = read_dir_recursive(path, r, payload.id.clone());
-            return Json(files_and_folders).into_response();
+            let folders = folders.unwrap();
+            for folder in folders {
+                if folder.id == payload.id {
+                    let home = home_dir().unwrap().to_string_lossy().to_string();
+                    let r = format!("{}/", folder.path.replace("~", &home));
+                    let p = format!("{}/{}", folder.path.replace("~", &home), payload.path);
+                    let path = Path::new(&p);
+                    let files_and_folders = read_dir_recursive(path, r, payload.id.clone());
+                    return Json(files_and_folders).into_response();
+                }
+            }
+            return (StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS, "UNAVAILABLE_FOR_LEGAL_REASONS").into_response();
         }
     }
-    return (StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS, "UNAVAILABLE_FOR_LEGAL_REASONS").into_response();
 }
 
 fn read_dir_recursive(dir: &Path, replace: String, id: String) -> Vec<FolderFile> {
@@ -369,6 +390,7 @@ async fn home_page(
         let page = page.replace("<Folders/>", &create_html_folders(guest.guest_data.clone()).await);
         let page = page.replace("<Users/>", &create_html_users(guest.guest_data.clone()).await);
         let page = page.replace("<UsersData/>", &create_json_users(guest.guest_data.clone()).await);
+        let page = page.replace("<FoldersData/>", &create_json_folders(guest.guest_data.clone()).await);
 
         Html(page).into_response()
     } else {
@@ -382,7 +404,11 @@ async fn home_page(
 struct SetSiteSettings {
     api_token: String,
     st_url: String,
-    ssss_url: String
+    ssss_url: String,
+    #[serde(default)]
+    index_schedule_time: Option<String>,
+    #[serde(default)]
+    index_schedule_days: Option<String>,
 }
 
 async fn update_site_settings(
@@ -413,7 +439,43 @@ async fn update_site_settings(
         let _ = set_site_setting(&conn, "ssss-url", &payload.ssss_url);
     }
 
+    if let Some(time) = payload.index_schedule_time {
+        if !time.is_empty() {
+            let _ = set_site_setting(&conn, "index-schedule-time", &time);
+        }
+    }
+
+    if let Some(days) = payload.index_schedule_days {
+        if !days.is_empty() {
+            let _ = set_site_setting(&conn, "index-schedule-days", &days);
+        }
+    }
+
     StatusCode::OK
+}
+
+async fn trigger_indexing(
+    mut guest: Guest,
+) -> impl IntoResponse {
+    if !guest.guest_data.logged_in {
+        return (StatusCode::IM_A_TEAPOT, "User not logged in").into_response();
+    }
+
+    if guest.guest_data.role != ADMIN {
+        return (StatusCode::FORBIDDEN, "Admin access required").into_response();
+    }
+
+    let indexer = file_indexer::FileIndexer::new();
+    match indexer.trigger_indexing().await {
+        Ok(_) => {
+            out::ok(SCRIPT, "Manual indexing triggered successfully");
+            (StatusCode::OK, "Indexing started").into_response()
+        }
+        Err(e) => {
+            out::error(SCRIPT, &format!("Failed to trigger indexing: {}", e));
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to trigger indexing: {}", e)).into_response()
+        }
+    }
 }
 
 //##### GET FOLDERS HTML #####\\
@@ -525,5 +587,33 @@ async fn create_json_users(guest: GuestData) -> String {
     let users = get_users(guest).await;
     let res = users.unwrap_or_default();
     let json = serde_json::to_string(&res).unwrap();
+    json
+}
+
+//##### GET FOLDERS JSON #####\\
+async fn create_json_folders(guest: GuestData) -> String {
+    let folders = get_folders().await;
+    let res = folders.unwrap_or_default();
+    let conn = database_connect();
+    let user = User::get_user(&conn, &guest.username);
+    
+    // Filter folders based on user permissions
+    let mut filtered_folders = Vec::new();
+    if let Some(user) = user {
+        if guest.role == ADMIN {
+            filtered_folders = res;
+        } else {
+            for folder in res {
+                for allowed_folder in &user.allowed_folders {
+                    if folder.id == allowed_folder.folder {
+                        filtered_folders.push(folder);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    let json = serde_json::to_string(&filtered_folders).unwrap();
     json
 }

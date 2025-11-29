@@ -54,12 +54,46 @@ pub struct FolderFile {
     pub is_file: bool
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum SyncStatus {
+    #[serde(rename = "in_cloud")]
+    InCloud,
+    #[serde(rename = "syncing")]
+    Syncing,
+    #[serde(rename = "synced")]
+    Synced,
+}
+
+impl SyncStatus {
+    pub fn as_str(&self) -> &str {
+        match self {
+            SyncStatus::InCloud => "in_cloud",
+            SyncStatus::Syncing => "syncing",
+            SyncStatus::Synced => "synced",
+        }
+    }
+    
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "syncing" => SyncStatus::Syncing,
+            "synced" => SyncStatus::Synced,
+            _ => SyncStatus::InCloud,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FolderFileSaved {
     pub id: i32,
     pub root: String,
     pub path: String,
-    pub is_file: bool
+    pub is_file: bool,
+    #[serde(default = "default_sync_status")]
+    pub sync_status: SyncStatus,
+}
+
+fn default_sync_status() -> SyncStatus {
+    SyncStatus::InCloud
 }
 
 #[derive(Deserialize, Debug, Clone)]
