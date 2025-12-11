@@ -20,6 +20,7 @@ uuid = "*"
 dirs = "*"
 colored = "*"
 chrono = "*"
+notify = "6.1"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winbase", "fileapi", "winnt"] }

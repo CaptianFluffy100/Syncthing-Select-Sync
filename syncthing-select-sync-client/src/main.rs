@@ -569,19 +569,29 @@ async fn sync_file(
     let full_path = format!("{}/{}", folder.path.replace("~", &home), payload.path);
     let file_path = Path::new(&full_path);
 
-    // Check if file already exists
+    // Check if file already exists and is fully synced
     if file_path.exists() {
         // Check if it's a virtual file
         if virtual_files::VirtualFileManager::is_virtual_file(file_path) {
             // It's a virtual file, we need to actually sync it
-            out::ok(SCRIPT, &format!("Virtual file accessed, syncing: {}", full_path));
-            // Continue to sync the file below
+            out::ok(SCRIPT, &format!("Virtual file accessed, triggering sync: {}", full_path));
         } else {
-            // File already synced
-            if let Err(e) = update_sync_status(&conn, item.id, "synced") {
-                out::error(SCRIPT, &format!("Failed to update sync status: {}", e));
+            // Check if file has content (not just an empty placeholder)
+            let is_empty = if item.is_file {
+                file_path.metadata()
+                    .map(|m| m.len() == 0)
+                    .unwrap_or(false)
+            } else {
+                false // Directories are never "empty" in this sense
+            };
+            
+            if !is_empty {
+                // File already synced with content
+                if let Err(e) = update_sync_status(&conn, item.id, "synced") {
+                    out::error(SCRIPT, &format!("Failed to update sync status: {}", e));
+                }
+                return (StatusCode::OK, "File already synced").into_response();
             }
-            return (StatusCode::OK, "File already synced").into_response();
         }
     }
 
@@ -594,39 +604,35 @@ async fn sync_file(
         }
     }
 
-    // For now, we'll just create an empty file or placeholder
-    // In a real implementation, you'd download from the server
-    // For files, create empty file; for folders, create directory
-    let result = if item.is_file {
-        fs::File::create(file_path).map(|_| ())
-    } else {
-        fs::create_dir_all(file_path).map(|_| ())
-    };
-
-    match result {
-        Ok(_) => {
-            // Remove virtual file marker if it exists
-            if let Err(e) = virtual_files::VirtualFileManager::remove_virtual_marker(file_path).await {
-                out::warning(SCRIPT, &format!("Failed to remove virtual marker: {}", e));
-            }
-            
-            // Update .stignore to include this file
-            update_stignore(payload.root.clone(), false).await;
-            
-            // Update status to synced
-            if let Err(e) = update_sync_status(&conn, item.id, "synced") {
-                out::error(SCRIPT, &format!("Failed to update sync status: {}", e));
-            }
-            
-            out::ok(SCRIPT, &format!("File synced: {}", full_path));
-            (StatusCode::OK, "File synced successfully").into_response()
+    // Remove virtual file marker so Syncthing can sync it
+    if file_path.exists() {
+        if let Err(e) = virtual_files::VirtualFileManager::remove_virtual_marker(file_path).await {
+            out::warning(SCRIPT, &format!("Failed to remove virtual marker: {}", e));
         }
-        Err(e) => {
-            out::error(SCRIPT, &format!("Failed to sync file: {}", e));
-            let _ = update_sync_status(&conn, item.id, "in_cloud");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to sync file").into_response()
+    } else {
+        // Create placeholder if it doesn't exist (for directories or initial file creation)
+        if !item.is_file {
+            if let Err(e) = fs::create_dir_all(file_path) {
+                out::error(SCRIPT, &format!("Failed to create directory: {}", e));
+                let _ = update_sync_status(&conn, item.id, "in_cloud");
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create directory").into_response();
+            }
         }
     }
+    
+    // Update .stignore to allow Syncthing to sync this file
+    update_stignore(payload.root.clone(), false).await;
+    
+    // Trigger Syncthing to rescan the folder so it picks up the .stignore change
+    // This will cause Syncthing to start syncing the file
+    if let Err(e) = trigger_syncthing_rescan(&payload.root).await {
+        out::warning(SCRIPT, &format!("Failed to trigger Syncthing rescan: {}", e));
+    }
+    
+    // Don't mark as synced yet - we'll monitor and update when file is actually downloaded
+    // For now, keep it as "syncing"
+    out::ok(SCRIPT, &format!("Sync triggered for: {}. Syncthing will download the file.", full_path));
+    (StatusCode::OK, "Sync triggered. File will be downloaded by Syncthing.").into_response()
 }
 
 #[derive(Deserialize, Debug)]
@@ -766,6 +772,54 @@ async fn check_file_status(
         "status": item.sync_status.as_str(),
         "is_file": item.is_file
     })).into_response()
+}
+
+/// Trigger Syncthing to rescan a folder
+async fn trigger_syncthing_rescan(folder_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let client = match config::create_http_client() {
+        Ok(c) => c,
+        Err(e) => return Err(format!("Failed to create HTTP client: {}", e).into()),
+    };
+    
+    let conn = match database_connect() {
+        Ok(c) => c,
+        Err(e) => return Err(format!("Database connection failed: {}", e).into()),
+    };
+    
+    let st_url = match get_site_setting(&conn, "st-url") {
+        Some(s) => s,
+        None => return Err("st-url not found in settings".into()),
+    };
+    
+    let st_api_key = match get_site_setting(&conn, "api-key") {
+        Some(s) => s,
+        None => return Err("api-key not found in settings".into()),
+    };
+    
+    // Ensure URL has protocol
+    let base_url = if st_url.value.starts_with("http://") || st_url.value.starts_with("https://") {
+        st_url.value.clone()
+    } else {
+        format!("https://{}", st_url.value)
+    };
+    
+    // Trigger folder rescan via Syncthing API
+    let url = format!("{}/rest/db/scan?folder={}", base_url, folder_id);
+    out::debug(SCRIPT, &format!("Triggering Syncthing rescan: {}", url));
+    
+    let response = client
+        .post(&url)
+        .header("X-API-Key", st_api_key.value)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send rescan request: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("Syncthing rescan returned error: {}", response.status()).into());
+    }
+    
+    out::ok(SCRIPT, &format!("Triggered Syncthing rescan for folder: {}", folder_id));
+    Ok(())
 }
 
 async fn update_stignore(id: String, _delete: bool) {
